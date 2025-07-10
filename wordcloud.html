@@ -26,6 +26,7 @@
       color: #555;
       margin-top: 20px;
       height: 60px;
+      visibility: hidden;
     }
 
     #toastZone {
@@ -122,7 +123,7 @@
     <svg id="svgCloud" width="900" height="600" aria-label="Word cloud"></svg>
     <div id="loadingSpinner" class="spinner"></div>
   </div>
-  <div id="status">Loading...</div>
+  <div id="status"><p>Loading...</p></div>
 
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://unpkg.com/d3-cloud/build/d3.layout.cloud.js"></script>
@@ -211,7 +212,8 @@
         return;
       }
 
-      status.textContent = "Loading...";
+      status.style.visibility = "visible";
+
       fetch(scriptUrl)
         .then(res => res.json())
         .then(json => {
@@ -222,8 +224,7 @@
             if (spinner) {
               spinner.style.display = "none";
             }
-
-            status.textContent = ""; // Clear status message
+            status.style.visibility = "hidden"; // Keeps layout stable
           } else {
             status.textContent = "Invalid data received.";
           }
