@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Accessible SVG Word Cloud</title>
+  <style>
+
+    body {
+      font-family: "Lato", sans-serif;
+      background: #ffffff;
+      text-align: center;
+      padding: 40px;
+    }
+
+    #svgCloud {
+      border: 2px solid black;
+      border-radius: 5px;
+      margin: auto;
+      display: block;
+      width: 100%;
+      max-width: 900px;
+      height: 600px;
+    }
+
+    #status {
+      color: #555;
+      margin-top: 20px;
+    }
+
+    #toastZone {
+      position: relative;
+      height: 60px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .toast {
+      position: absolute;
+      background: #4b8dce;
+      color: #fff;
+      width: 200px;
+      padding: 12px 24px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      font-size: 16px;
+      z-index: 9999;
+      white-space: nowrap;
+      text-align: center;
+      animation: none;
+    }
+
+    @keyframes bounceFade {
+      0%   { opacity: 1; transform: translateY(0); }
+      5%   { transform: translateY(-8px); }
+      10%  { transform: translateY(0); }
+      70%  { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; }
+    }
+
+    .toast.success { background: #73ac6b; }
+    .toast.error   { background: #c62828; }
+    .toast.warn    { background: #f9a825; }
+
+    @media (max-width: 600px) {
+      input[type="text"] {
+        width: 80%;
+      }
+
+      .toast {
+        width: 160px;
+        font-size: 14px;
+      }
+    }
+
+    #canvasWrapper {
+      position: relative;
+      width: 100%;
+      max-width: 900px;
+      height: 600px;
+      margin: auto;
+    }
+
+    #wordCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border: 2px solid black;
+      border-radius: 5px;
+    }
+
+    .spinner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 48px;
+      height: 48px;
+      margin: -24px 0 0 -24px;
+      border: 5px solid #7bafde;
+      border-top: 5px solid #3462ae;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      z-index: 10;
+    }
+
+    @keyframes spin {
+      0%   { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Lato&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <form id="wordForm" style="margin-bottom: 20px;">
+    <input type="text" id="wordInput" placeholder="Enter words (comma-separated)" maxlength="50" style="padding: 8px; width: 300px;" />
+    <button type="submit" style="padding: 8px 16px;">Submit</button>
+  </form>
+
+  <div id="toastZone"></div>
+  <div id="canvasWrapper">
+    <svg id="svgCloud" width="900" height="600" aria-label="Word cloud"></svg>
+    <div id="loadingSpinner" class="spinner"></div>
+  </div>
+  <div id="status">Loading...</div>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/d3-cloud/build/d3.layout.cloud.js"></script>
+
+  <script>
+    const query = new URLSearchParams(window.location.search);
+    const scriptUrl = query.get("scriptUrl");
+    const svg = d3.select("#svgCloud");
+    const toastZone = document.getElementById("toastZone");
+    const status = document.getElementById("status");
+
+    let activeToast = null;
+    let toastTimeout = null;
+
+    function showToast(message, options = {}) {
+      const { persistent = false, resetTimer = true } = options;
+
+      if (!activeToast) {
+        activeToast = document.createElement("div");
+        activeToast.className = "toast";
+        activeToast.textContent = message;
+        toastZone.appendChild(activeToast);
+      } else {
+        activeToast.style.animation = "none";
+        void activeToast.offsetWidth; // trigger reflow
+        activeToast.textContent = message;
+      }
+
+      if (!persistent && resetTimer) {
+        activeToast.style.animation = "bounceFade 4.5s ease forwards";
+        activeToast.className = "toast success";
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => {
+          activeToast.remove();
+          activeToast = null;
+          toastTimeout = null;
+        }, 2500);
+      }
+    }
+
+    function renderWordCloud(data) {
+      const darkColors = [
+        "#ea894e", "#34495e", "#8e44ad", "#3498db", "#2ecc71",
+        "#f0609e	", "#fbad18", "#ed1b43", "#3b74ba", "#000000"
+      ];
+
+      const width = svg.node().clientWidth;
+      const height = svg.node().clientHeight;
+
+      svg.selectAll("*").remove();
+
+      const layout = d3.layout.cloud()
+        .size([width, height])
+        .words(data.map(d => ({ text: d[0], size: d[1] * 8 })))
+        .padding(5)
+        .rotate(() => 0)
+        .spiral("archimedean")
+        .font("Lato")
+        .fontSize(d => Math.max(d.size, 14)) // min 14px
+        .on("end", draw);
+
+      layout.start();
+
+      function draw(words) {
+        svg.append("g")
+          .attr("transform", `translate(${width / 2},${height / 2})`)
+          .selectAll("text")
+          .data(words)
+          .enter().append("text")
+          .style("font-family", "lato")
+          .style("font-size", d => `${d.size}px`)
+          .style("fill", () => darkColors[Math.floor(Math.random() * darkColors.length)])
+          .attr("text-anchor", "middle")
+          .attr("transform", d => `translate(${d.x},${d.y}) rotate(${d.rotate})`)
+          .text(d => d.text);
+        status.textContent = "";
+      }
+    }
+
+    function loadWords() {
+      const status = document.getElementById("status");
+      const spinner = document.getElementById("loadingSpinner"); // 👈 get the spinner
+
+      if (!scriptUrl) {
+        status.textContent = "Missing scriptUrl query parameter.";
+        return;
+      }
+
+      status.textContent = "Loading...";
+      fetch(scriptUrl)
+        .then(res => res.json())
+        .then(json => {
+          if (json.result === "success" && Array.isArray(json.list)) {
+            renderWordCloud(json.list);
+
+            // ✅ Hide the spinner once we have the data
+            if (spinner) {
+              spinner.style.display = "none";
+            }
+
+            status.textContent = ""; // Clear status message
+          } else {
+            status.textContent = "Invalid data received.";
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          status.textContent = "Failed to load word cloud.";
+          if (spinner) {
+            spinner.style.display = "none";
+          }
+        });
+    }
+
+    document.fonts.ready.then(() => {
+      loadWords();
+    });
+
+    document.getElementById("wordForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const input = document.getElementById("wordInput");
+      const text = input.value.trim();
+      if (!text) {
+        showToast("⚠️ Please enter some words.", { resetTimer: true });
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("name", text);
+
+      showToast("Sending...", { persistent: true });
+
+      fetch(scriptUrl, {
+        method: "POST",
+        body: formData
+      })
+        .then(res => res.json())
+        .then(json => {
+          if (json.result === "success") {
+            input.value = "";
+            showToast("Nice job!", { resetTimer: true });
+            loadWords();
+          } else {
+            showToast("❌ Submission error.", { resetTimer: true });
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          showToast("⚠️ Failed to submit.", { resetTimer: true });
+        });
+    });
+  </script>
+</body>
+</html>
