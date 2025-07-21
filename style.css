@@ -1,0 +1,311 @@
+body {
+  font-family: 'Lato', Arial, sans-serif;
+  text-align: center;
+  padding: 32px;
+  background: #ffffff;
+  color: #1f2937;
+  line-height: 1.6;
+  margin: 0;
+}
+
+main {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+#examinerBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 24px auto;
+  max-width: 600px;
+}
+
+#examinerImg {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: #3c82f6;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#progressBar {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 24px auto;
+  max-width: 600px;
+}
+
+#countdownWrapper {
+  width: 100%;
+  max-width: 600px;
+  height: 8px;
+  background-color: #e5e7eb;
+  margin: 24px auto;
+  border-radius: 4px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+#countdownBar {
+  height: 100%;
+  width: 0%;
+  background-color: #4caf50;
+  transition: width 1s linear, background-color 0.5s ease;
+}
+
+#countdownStatus {
+  font-size: 14px;
+  color: #1f2937;
+  margin: 12px auto;
+  max-width: 600px;
+}
+
+.step {
+  padding: 6px 16px;
+  border-radius: 9999px;
+  background-color: #e5e7eb;
+  font-weight: 600;
+  font-size: 14px;
+  color: #6b7280;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.step.active {
+  background-color: #3b82f6;
+  color: #ffffff;
+}
+
+.step.completed {
+  background-color: #93c5fd;
+  color: #1f2937;
+}
+
+#prompt {
+  font-size: 20px;
+  font-weight: 500;
+  color: #1f2937;
+  margin: 24px auto;
+  max-width: 600px;
+}
+
+#buttonGroup {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 16px auto;
+  max-width: 600px;
+}
+
+button {
+  padding: 10px 24px;
+  font-size: 16px;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  min-width: 120px;
+  margin: 0px 5px;
+}
+
+#talkBtn {
+  background-color: #3b82f6;
+  color: #ffffff;
+}
+
+#talkBtn:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+#pauseBtn, #cancelBtn {
+  background-color: #6b7280;
+  color: #ffffff;
+}
+
+#pauseBtn:hover:not(:disabled), #cancelBtn:hover:not(:disabled) {
+  background-color: #4b5563;
+}
+
+button:disabled {
+  background-color: #d1d5db;
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+button.recording {
+  background-color: #ef4444;
+}
+
+button.recording:hover {
+  background-color: #dc2626;
+}
+
+button.try-again {
+  background-color: #6b7280;
+}
+
+button.try-again:hover {
+  background-color: #4b5563;
+}
+
+#transcriptContainer {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 40px;
+  margin: 24px auto;
+  background: #f9fafb;
+  max-width: 600px;
+}
+
+.transcript-block {
+  text-align: left;
+  margin-bottom: 40px;
+}
+
+.transcript-block h4 {
+  font-weight: 400;
+  font-size: 16px;
+  color: #1f2937;
+}
+
+.transcript-block textarea {
+  width: 100%;
+  min-height: 64px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 8px;
+  font-family: 'Lato', Arial, sans-serif;
+  font-size: 16px;
+  resize: vertical;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+.transcript-block audio {
+  width: calc(100% - 16px);
+  margin: 8px;
+  display: block;
+}
+
+#audioLevel {
+  width: 96px;
+  height: 6px;
+  border-radius: 4px;
+  background: #e5e7eb;
+  overflow: hidden;
+  margin: 12px auto;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+@keyframes prompt-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes prompt-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.prompt-exit {
+  animation: prompt-exit 0.2s forwards;
+}
+
+.prompt-enter {
+  animation: prompt-enter 0.2s forwards;
+}
+
+@keyframes shape-transition {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animated-shape {
+  animation: shape-transition 0.3s ease-in-out, shape-breathing 2s ease-in-out infinite;
+}
+
+@keyframes shape-breathing {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 600px) {
+  body {
+    padding: 16px;
+  }
+  main {
+    max-width: 100%;
+  }
+  #examinerBox, #progressBar, #countdownWrapper, #prompt, #countdownStatus, #transcriptContainer, #buttonGroup {
+    max-width: 100%;
+  }
+  #examinerImg {
+    width: 80px;
+    height: 80px;
+  }
+  .step {
+    font-size: 12px;
+    padding: 5px 12px;
+  }
+  button {
+    font-size: 14px;
+    padding: 8px 16px;
+    min-width: 100px;
+  }
+  #prompt {
+    font-size: 24px;
+  }
+  #countdownStatus {
+    font-size: 12px;
+  }
+  #transcriptContainer {
+    padding: 12px;
+  }
+  #audioLevel {
+    width: 80px;
+    height: 5px;
+  }
+}
