@@ -38,7 +38,7 @@ const Speaking = (function () {
       `<polygon points="50,28 70,44 64,68 36,68 30,44" fill="#ffffff" stroke="#ffffff" stroke-width="2" stroke-linejoin="round" />` // Pentagon
     ],
     fallbackImage: `<div id="examinerImg"><svg width="80" height="80" viewBox="0 0 100 100"><polygon points="40,30 60,30 70,40 70,60 60,70 40,70 30,60 30,40" fill="#ffffff" stroke="#ffffff" stroke-width="2" stroke-linejoin="round" /></svg></div>`,
-    audioType: MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4",
+    audioType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/mp4",
     downloadName: "ielts-response.webm",
   };
 
@@ -154,7 +154,8 @@ const Speaking = (function () {
     try {
       await setupMediaRecorder();
     } catch (err) {
-      handleError(`Failed to initialize media: ${err.message}`);
+      console.error("Microphone access error:", err.message);
+      handleError(`Please allow microphone access in Canvas app or browser settings. ${window.matchMedia("(max-width: 600px)").matches ? "On mobile, go to Settings > Canvas > Microphone." : ""}`);
       return;
     }
     setupAudioLevelIndicator();
@@ -189,6 +190,7 @@ const Speaking = (function () {
     if (globalQuestions.length > 0) {
       console.log("Using cached questions from globalQuestions:", globalQuestions);
       state.questions = globalQuestions.slice(0, config.questionCount);
+      state.mediaChunks = Array(state.questions.length).fill().map(() => []);
       return;
     }
     if (!config.scriptUrl) {
@@ -204,12 +206,13 @@ const Speaking = (function () {
       if (data.result === "success" && Array.isArray(data.list)) {
         globalQuestions.push(...data.list.map(item => item.question).filter(Boolean));
         state.questions = globalQuestions.slice(0, config.questionCount);
+        state.mediaChunks = Array(state.questions.length).fill().map(() => []);
         console.log("Questions loaded and cached:", globalQuestions);
       } else {
         handleError("Invalid sheet format.");
       }
     } catch (err) {
-      handleError(`Unable to load questions: ${err.message}`, err);
+      handleError(`Unable to load questions: ${err.message}`);
     }
   }
 
@@ -265,11 +268,11 @@ const Speaking = (function () {
       });
       mediaRecorder.ondataavailable = e => {
         if (!state.mediaChunks[state.index]) state.mediaChunks[state.index] = [];
-        if (e.data.size > 0) {
+        if (e.data.size > 0 && e.data instanceof Blob) {
           state.mediaChunks[state.index].push(e.data);
           console.log(`Data pushed to mediaChunks[${state.index}]: size=${e.data.size}, type=${e.data.type}`);
         } else {
-          console.warn(`Empty chunk received for question ${state.index + 1}`);
+          console.warn(`Invalid or empty chunk for question ${state.index + 1}: size=${e.data.size}`);
         }
       };
       mediaRecorder.onstop = () => {
@@ -341,7 +344,7 @@ const Speaking = (function () {
       try {
         cleanupMedia();
         cleanupRecognition();
-        state.mediaChunks = [];
+        state.mediaChunks = Array(state.questions.length).fill().map(() => []);
         state.transcripts = [];
         state.index = 0;
         state.isRecording = false;
@@ -361,7 +364,7 @@ const Speaking = (function () {
         DOM.talkBtn.disabled = false;
         state.isProcessing = false;
       } catch (err) {
-        console.error("Error during try-again:", err.message, err.stack);
+        console.error("Error during try-again:", err.message);
         handleError("Failed to restart session. Please try again.");
         state.isProcessing = false;
         DOM.talkBtn.disabled = false;
@@ -370,6 +373,7 @@ const Speaking = (function () {
     }
     if (DOM.talkBtn.classList.contains("retry")) {
       state.questions = globalQuestions.slice(0, config.questionCount);
+      state.mediaChunks = Array(state.questions.length).fill().map(() => []);
       console.log("Retrying initialization with cached questions:", state.questions);
       DOM.pauseBtn.disabled = true;
       await initApp();
@@ -474,8 +478,8 @@ const Speaking = (function () {
         }
       }
     } catch (err) {
-      console.error("Error in handleTalkClick:", err.message, err.stack);
-      handleError("Error occurred. Please check microphone or browser compatibility.");
+      console.error("Error in handleTalkClick:", err.message);
+      handleError(`Error occurred. Please check microphone or browser compatibility. ${window.matchMedia("(max-width: 600px)").matches ? "On mobile, go to Settings > Canvas > Microphone." : ""}`);
       state.isProcessing = false;
       DOM.talkBtn.disabled = false;
       DOM.pauseBtn.disabled = true;
@@ -495,7 +499,9 @@ const Speaking = (function () {
       DOM.pauseBtn.textContent = "Pause";
       DOM.pauseBtn.setAttribute("aria-label", "Pause recording");
       if (DOM.examinerImg) {
-        const shapeSvg = DOM.examinerImg.querySelector(".animated-shape");
+        const shapeSvg = DOMව
+
+System: DOM.examinerImg.querySelector(".animated-shape");
         if (shapeSvg && !window.matchMedia("(max-width: 600px)").matches) {
           shapeSvg.classList.add("animated-shape");
         }
@@ -530,6 +536,8 @@ const Speaking = (function () {
       disabledMsg.textContent = "Resume or cancel to proceed";
       disabledMsg.style.cssText = "font-size: 12px; color: #6b7280; text-align: center; margin-top: 4px;";
       DOM.talkBtn.parentNode.appendChild(disabledMsg);
+      // Ensure mediaChunks is initialized
+      if (!state.mediaChunks[state.index]) state.mediaChunks[state.index] = [];
     }
   }
 
@@ -539,7 +547,7 @@ const Speaking = (function () {
         cleanupRecognition();
         cleanupMedia();
         clearInterval(state.countdownInterval);
-        state.mediaChunks = [];
+        state.mediaChunks = Array(state.questions.length).fill().map(() => []);
         state.transcripts = [];
         state.index = 0;
         state.isRecording = false;
@@ -566,7 +574,7 @@ const Speaking = (function () {
           handleError(`Failed to restart media after cancel: ${err.message}`);
         });
       } catch (err) {
-        console.error("Error in cancelSession:", err.message, err.stack);
+        console.error("Error in cancelSession:", err.message);
         handleError("Failed to cancel session. Please try again.");
         DOM.pauseBtn.disabled = true;
       }
@@ -703,7 +711,7 @@ const Speaking = (function () {
       audio.controls = true;
       audio.style.cssText = "width: calc(100% - 8px); margin: 4px; display: block;";
       audio.setAttribute("aria-label", `Audio response for question ${i + 1}`);
-      if (state.mediaChunks[i] && state.mediaChunks[i].length > 0) {
+      if (state.mediaChunks[i] && state.mediaChunks[i].length > 0 && state.mediaChunks[i].every(chunk => chunk instanceof Blob && chunk.size > 0)) {
         const blob = new Blob(state.mediaChunks[i], { type: config.audioType });
         console.log(`Blob size for question ${i + 1}:`, blob.size);
         if (blob.size > 0) {
@@ -711,19 +719,20 @@ const Speaking = (function () {
           audio.src = url;
           blobUrls.push(url);
           console.log(`Audio src set for question ${i + 1}:`, url);
-          audio.addEventListener("error", (e) => {
-            console.error(`Audio error for question ${i + 1}:`, e);
-          });
         } else {
           console.warn(`Empty Blob for question ${i + 1}`);
           audio.title = "No audio recorded for this question";
           audio.disabled = true;
         }
       } else {
-        console.warn(`No media chunks for question ${i + 1}`);
+        console.warn(`Invalid or missing media chunks for question ${i + 1}`);
         audio.title = "No audio recorded for this question";
         audio.disabled = true;
       }
+      audio.addEventListener("error", (e) => {
+        console.error(`Audio error for question ${i + 1}:`, e);
+        audio.title = "Error playing audio for this question";
+      });
 
       block.appendChild(heading);
       block.appendChild(answer);
@@ -735,50 +744,72 @@ const Speaking = (function () {
     label.textContent = "🔊 Full Speaking Response:";
     DOM.transcript.appendChild(label);
 
-    const fullChunks = state.mediaChunks.filter(chunks => chunks && chunks.length > 0 && chunks.every(chunk => chunk.size > 0));
-    console.log("Full chunks for concatenation:", fullChunks.map((chunks, i) => ({
-      question: i + 1,
-      chunkCount: chunks?.length || 0,
-      totalSize: chunks ? chunks.reduce((sum, chunk) => sum + chunk.size, 0) : 0,
-    })));
-
-    const fullBlob = new Blob([].concat(...fullChunks), { type: config.audioType });
-    console.log("Full Blob size:", fullBlob.size);
+    const fullChunks = state.mediaChunks.filter((chunks, i) => {
+      if (chunks && chunks.length > 0 && chunks.every(chunk => chunk instanceof Blob && chunk.size > 0)) {
+        console.log(`Valid chunks for question ${i + 1}: count=${chunks.length}, totalSize=${chunks.reduce((sum, chunk) => sum + chunk.size, 0)}`);
+        return true;
+      }
+      console.warn(`Skipping invalid chunks for question ${i + 1}`);
+      return false;
+    });
 
     const audio = document.createElement("audio");
     audio.controls = true;
     audio.style.cssText = "width: calc(100% - 8px); margin: 4px; display: block;";
     audio.setAttribute("aria-label", "Full speaking response audio");
-    if (fullBlob.size > 0) {
-      const url = URL.createObjectURL(fullBlob);
-      audio.src = url;
-      blobUrls.push(url);
-      console.log("Full response audio src:", url);
-      audio.addEventListener("error", (e) => {
-        console.error("Full response audio error:", e);
-      });
-    } else {
-      console.warn("Empty full response Blob");
-      audio.title = "No audio recorded";
-      audio.disabled = true;
-    }
-    DOM.transcript.appendChild(audio);
 
-    const link = document.createElement("a");
-    link.href = audio.src;
-    link.download = config.downloadName;
-    link.textContent = "Download your full response";
-    link.style.cssText = "display: block; margin: 10px 4px; font-size: 13px;";
-    link.setAttribute("aria-label", "Download full response audio");
-    DOM.transcript.appendChild(link);
+    if (fullChunks.length > 0) {
+      try {
+        const fullBlob = new Blob([].concat(...fullChunks), { type: config.audioType });
+        console.log("Full Blob size:", fullBlob.size);
+        if (!audio.canPlayType(fullBlob.type)) {
+          console.warn(`Browser does not support ${fullBlob.type} for full response`);
+          audio.title = `Audio format (${fullBlob.type}) not supported by this browser`;
+          audio.disabled = true;
+        } else if (fullBlob.size > 0) {
+          const url = URL.createObjectURL(fullBlob);
+          audio.src = url;
+          blobUrls.push(url);
+          console.log("Full response audio src:", url);
+
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = config.downloadName;
+          link.textContent = "Download full response";
+          link.style.cssText = "display: block; margin: 10px 4px; font-size: 13px;";
+          link.setAttribute("aria-label", "Download full response audio");
+          DOM.transcript.appendChild(link);
+        } else {
+          console.warn("Empty full response Blob");
+          audio.title = "No valid audio recorded for full response";
+          audio.disabled = true;
+        }
+      } catch (err) {
+        console.error("Error creating full response Blob:", err.message);
+        audio.title = "Error generating full response audio";
+        audio.disabled = true;
+      }
+    } else {
+      console.warn("No valid chunks for full response");
+      audio.title = "No valid audio recorded for full response";
+      audio.disabled = true;
+      const errorMsg = document.createElement("p");
+      errorMsg.className = "error";
+      errorMsg.textContent = "No valid audio recorded for the full response. Please record all questions.";
+      DOM.transcript.appendChild(errorMsg);
+    }
+    audio.addEventListener("error", (e) => {
+      console.error("Full response audio error:", e);
+      audio.title = "Error playing full response audio";
+    });
+    DOM.transcript.appendChild(audio);
 
     resizeIframe();
   }
 
-  function handleError(msg, err = null) {
+  function handleError(msg) {
     console.warn(msg);
-    if (err) console.error(err);
-    DOM.prompt.textContent = `❌ ${msg}`;
+    DOM.prompt.textContent = `❌ ${msg} ${window.matchMedia("(max-width: 600px)").matches ? "On mobile, go to Settings > Canvas > Microphone." : "Check browser settings to allow microphone access for this site."}`;
     DOM.talkBtn.disabled = true;
     DOM.talkBtn.textContent = "Retry";
     DOM.talkBtn.classList.add("retry");
