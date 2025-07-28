@@ -4,24 +4,26 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>IELTS Speaking Practice</title>
-  <link rel="stylesheet" href="./style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="progressBar" role="progressbar" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0"></div>
+  <div id="prompt">Loading...</div>
   <div id="examinerBox">
-    <img id="examinerImg" src="./examiner1.jpg" alt="Examiner Avatar">
-    <div id="prompt">Preparing your questions...</div>
-    <canvas id="audioLevel" width="96" height="6"></canvas>
+    <div id="examinerImg">
+      <img src="https://via.placeholder.com/80?text=Examiner" alt="Examiner placeholder" style="width: 80px; height: 80px;">
+    </div>
   </div>
-  <button id="talkBtn" aria-label="Start recording">Start</button>
-  <button id="pauseBtn" aria-label="Pause recording">Pause</button>
-  <button id="cancelBtn" aria-label="Cancel session">Cancel</button>
-  <div id="countdownWrapper">
-    <div id="countdownBar"></div>
-    <div id="countdownStatus"></div>
+  <div id="countdownBar"></div>
+  <div id="countdownStatus"></div>
+  <canvas id="audioLevel"></canvas>
+  <div id="progressBar"></div>
+  <div>
+    <button id="talkBtn" disabled>Start</button>
+    <button id="pauseBtn" disabled>Pause</button>
+    <button id="cancelBtn">Cancel</button>
   </div>
-  <div id="transcriptContainer" style="display: none;"></div>
-  <script src="./avatar.js"></script>
-  <script src="./speaking.js"></script>
+  <div id="transcriptContainer"></div>
+  <script src="speaking.js"></script>
 </body>
 </html>
