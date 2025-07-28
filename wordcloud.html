@@ -132,7 +132,7 @@
 </head>
 <body>
   <form id="wordForm" style="margin-bottom: 20px;">
-    <input type="text" id="wordInput" placeholder="Enter words (comma-separated)" maxlength="50" style="padding: 8px; width: 300px;" />
+    <input type="text" id="wordInput" placeholder="Enter ideas (up to 3 words each, comma-separated)" maxlength="50" style="padding: 8px; width: 300px;" />
     <button type="submit" id="submitButton" style="padding: 8px 16px;">Submit</button>
     <button type="button" id="clearButton" style="padding: 8px 16px;">Clear Input</button>
   </form>
@@ -162,6 +162,7 @@
         "#f0609e", "#fbad18", "#ed1b43", "#3b74ba", "#000000"
       ],
       maxWords: 50,
+      maxWordsPerIdea: 3,
       toastQueue: [],
       isShowingToast: false,
       activeToast: null,
@@ -246,8 +247,18 @@
           this.inputError.textContent = "Profanity detected.";
           this.input.classList.add("invalid");
         } else {
-          this.inputError.textContent = "";
-          this.input.classList.remove("invalid");
+          const ideas = text.split(',').map(idea => idea.trim()).filter(idea => idea.length > 0);
+          const hasInvalidIdea = ideas.some(idea => {
+            const wordCount = idea.split(/\s+/).filter(word => word.length > 0).length;
+            return wordCount > this.maxWordsPerIdea;
+          });
+          if (hasInvalidIdea) {
+            this.inputError.textContent = `Each idea must have ${this.maxWordsPerIdea} words or fewer.`;
+            this.input.classList.add("invalid");
+          } else {
+            this.inputError.textContent = "";
+            this.input.classList.remove("invalid");
+          }
         }
       },
 
@@ -314,9 +325,9 @@
         this.wordCountDiv.textContent = `Total unique words: ${limitedData.length}`;
         const width = this.canvasWrapper.clientWidth;
         const height = this.canvasWrapper.clientHeight;
-    
+
         this.svg.selectAll("*").remove();
-    
+
         const layout = d3.layout.cloud()
           .size([width, height])
           .words(limitedData.map(d => ({ text: d[0], size: d[1] * 8 })))
@@ -326,7 +337,7 @@
           .font("Lato")
           .fontSize(d => Math.max(d.size, 14))
           .on("end", (words) => this.draw(words));
-    
+
         layout.start();
         this.sendHeight();
       },
@@ -402,7 +413,7 @@
         const text = sanitizeInput(this.input.value.trim());
 
         if (!text) {
-          this.showToast("⚠️ Please enter some words", { type: "warn" });
+          this.showToast("⚠️ Please enter some ideas", { type: "warn" });
           this.submitButton.disabled = false;
           return;
         }
@@ -420,10 +431,22 @@
           return;
         }
 
+        const ideas = text.split(',').map(idea => idea.trim()).filter(idea => idea.length > 0);
+        const hasInvalidIdea = ideas.some(idea => {
+          const wordCount = idea.split(/\s+/).filter(word => word.length > 0).length;
+          return wordCount > this.maxWordsPerIdea;
+        });
+
+        if (hasInvalidIdea) {
+          this.showToast(`⚠️ Each idea must have ${this.maxWordsPerIdea} words or fewer`, { type: "warn" });
+          this.submitButton.disabled = false;
+          return;
+        }
+
         const formData = new FormData();
         formData.append("name", text);
 
-        this.showToast("Submitting your words to the cloud...", { persistent: true, type: "processing" });
+        this.showToast("Submitting your ideas to the cloud...", { persistent: true, type: "processing" });
 
         fetch(this.scriptUrl, {
           method: "POST",
@@ -446,7 +469,7 @@
           })
           .catch(err => {
             console.error("Submit error:", err);
-            this.showToast("Failed to submit words to the cloud. Please try again later.", { type: "error" });
+            this.showToast("Failed to submit ideas to the cloud. Please try again later.", { type: "error" });
             this.spinner.style.visibility = "hidden";
           })
           .finally(() => {
