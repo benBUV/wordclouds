@@ -1,3 +1,5 @@
+console.log('Speech v1');
+
 const globalQuestions = [];
 
 const Speaking = (function () {
