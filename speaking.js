@@ -32,27 +32,34 @@ const Speaking = (function () {
     sheetName: query.get("sheet") || "",
     questionCount: parseInt(query.get("questions")) || 3,
     countdownTime: parseInt(query.get("max")) || 60,
-    examinerShapes: [
-      `<polygon points="50,25 75,65 25,65" fill="#ffffff" stroke="#ffffff" stroke-width="2" stroke-linejoin="round" />`, // Triangle
-      `<polygon points="50,28 70,40 70,60 50,72 30,60 30,40" fill="#ffffff" stroke="#ffffff" stroke-width="2" stroke-linejoin="round" />`, // Hexagon
-      `<polygon points="50,28 70,44 64,68 36,68 30,44" fill="#ffffff" stroke="#ffffff" stroke-width="2" stroke-linejoin="round" />` // Pentagon
-    ],
-    fallbackImage: `<div id="examinerImg"><svg width="80" height="80" viewBox="0 0 100 100"><polygon points="40,30 60,30 70,40 70,60 60,70 40,70 30,60 30,40" fill="#ffffff" stroke="#ffffff" stroke-width="2" stroke-linejoin="round" /></svg></div>`,
     audioType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/mp4",
     downloadName: "ielts-response.webm",
+    examinerImage: "https://via.placeholder.com/80?text=Examiner", // Static image URL
   };
 
   let recognition, mediaRecorder, audioContext, analyser, microphone;
   const blobUrls = [];
 
-  function resizeIframe() {
-    const height = document.documentElement.scrollHeight + 20;
-    console.log(`Sending lti.frameResize with height: ${height}px`);
+  function debounce(func, wait) {
+    let timeout;
+    return function (...args) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+  }
+
+  const resizeIframe = debounce(function () {
+    const height = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight) + 20;
+    const cappedHeight = Math.min(height, 1000);
+    if (height > 1000) {
+      console.warn(`Excessive scrollHeight: ${height}px, using cappedHeight: ${cappedHeight}px`);
+    }
+    console.log(`Sending lti.frameResize with height: ${cappedHeight}px`);
     window.parent.postMessage(
-      JSON.stringify({ subject: "lti.frameResize", height: `${height}px` }),
+      JSON.stringify({ subject: "lti.frameResize", height: `${cappedHeight}px` }),
       "*"
     );
-  }
+  }, 100);
 
   function cleanupMedia() {
     if (mediaRecorder && mediaRecorder.stream) {
@@ -130,19 +137,15 @@ const Speaking = (function () {
     DOM.talkBtn.setAttribute("aria-label", "Start recording");
     DOM.pauseBtn.setAttribute("aria-label", "Pause recording");
     try {
-      if (DOM.examinerImg && config.examinerShapes.length > 0) {
-        DOM.examinerImg.outerHTML = `<div id="examinerImg"><svg class="animated-shape" width="80" height="80" viewBox="0 0 100 100">${config.examinerShapes[0]}</svg></div>`;
-        DOM.examinerImg = document.getElementById("examinerImg");
-        DOM.examinerImg.setAttribute("aria-label", "Default geometric examiner shape (triangle)");
-        console.log("Initial examiner shape set: Triangle");
+      if (DOM.examinerImg) {
+        DOM.examinerImg.innerHTML = `<img src="${config.examinerImage}" alt="Examiner placeholder" style="width: 80px; height: 80px;">`;
+        console.log("Static examiner image set");
       } else {
-        throw new Error("No examiner shapes defined");
+        throw new Error("Examiner image element not found");
       }
     } catch (err) {
-      console.error("Failed to set initial examiner shape:", err.message);
-      DOM.examinerImg.outerHTML = config.fallbackImage;
-      DOM.examinerImg = document.getElementById("examinerImg");
-      DOM.examinerImg.setAttribute("aria-label", "Default fallback shape (octagon)");
+      console.error("Failed to set examiner image:", err.message);
+      handleError("Failed to load examiner image.");
     }
     await loadQuestions();
     if (!state.questions.length) {
@@ -161,7 +164,7 @@ const Speaking = (function () {
     setupAudioLevelIndicator();
     setupEventListeners();
     DOM.talkBtn.disabled = false;
-    window.addEventListener("resize", resizeIframe);
+    resizeIframe();
   }
 
   function preloadProgressBar() {
@@ -498,14 +501,6 @@ const Speaking = (function () {
       DOM.prompt.textContent = state.questions[state.index];
       DOM.pauseBtn.textContent = "Pause";
       DOM.pauseBtn.setAttribute("aria-label", "Pause recording");
-      if (DOM.examinerImg) {
-        const shapeSvg = DOMව
-
-System: DOM.examinerImg.querySelector(".animated-shape");
-        if (shapeSvg && !window.matchMedia("(max-width: 600px)").matches) {
-          shapeSvg.classList.add("animated-shape");
-        }
-      }
       state.isRecording = true;
       DOM.pauseBtn.disabled = false;
       DOM.talkBtn.disabled = false;
@@ -523,10 +518,6 @@ System: DOM.examinerImg.querySelector(".animated-shape");
       DOM.pauseBtn.textContent = "Resume";
       DOM.prompt.textContent = "Paused";
       DOM.pauseBtn.setAttribute("aria-label", "Resume recording");
-      if (DOM.examinerImg) {
-        const shapeSvg = DOM.examinerImg.querySelector(".animated-shape");
-        if (shapeSvg) shapeSvg.classList.remove("animated-shape");
-      }
       state.isRecording = false;
       DOM.pauseBtn.disabled = false;
       DOM.talkBtn.disabled = true;
@@ -536,7 +527,6 @@ System: DOM.examinerImg.querySelector(".animated-shape");
       disabledMsg.textContent = "Resume or cancel to proceed";
       disabledMsg.style.cssText = "font-size: 12px; color: #6b7280; text-align: center; margin-top: 4px;";
       DOM.talkBtn.parentNode.appendChild(disabledMsg);
-      // Ensure mediaChunks is initialized
       if (!state.mediaChunks[state.index]) state.mediaChunks[state.index] = [];
     }
   }
@@ -592,26 +582,12 @@ System: DOM.examinerImg.querySelector(".animated-shape");
       updateProgressBar();
       DOM.prompt.textContent = state.questions[state.index];
       DOM.transcript.textContent = state.transcripts[state.index] || "Speak now...";
-      DOM.prompt.classList.add("prompt-enter");
-      setTimeout(() => {
-        DOM.prompt.classList.remove("prompt-enter");
-      }, 200);
-      if (DOM.examinerImg && config.examinerShapes.length > 0) {
-        const shape = config.examinerShapes[state.index % config.examinerShapes.length];
-        DOM.examinerImg.outerHTML = `<div id="examinerImg"><svg class="animated-shape" width="80" height="80" viewBox="0 0 100 100">${shape}</svg></div>`;
-        DOM.examinerImg = document.getElementById("examinerImg");
-        const shapeName = shape.includes("points=\"50,25") ? "triangle" : shape.includes("points=\"50,28 70,40") ? "hexagon" : "pentagon";
-        DOM.examinerImg.setAttribute("aria-label", `Geometric shape for question ${state.index + 1} (${shapeName})`);
-        console.log(`Loading examiner shape for question ${state.index + 1}: ${shapeName}`);
-        if (window.matchMedia("(max-width: 600px)").matches) {
-          const shapeSvg = DOM.examinerImg.querySelector(".animated-shape");
-          if (shapeSvg) shapeSvg.classList.remove("animated-shape");
-        }
-      } else {
-        console.error("No examiner shapes available");
-        DOM.examinerImg.outerHTML = config.fallbackImage;
-        DOM.examinerImg = document.getElementById("examinerImg");
-        DOM.examinerImg.setAttribute("aria-label", "Default fallback shape (octagon)");
+      const isMobile = window.matchMedia("(max-width: 600px)").matches;
+      if (!isMobile) {
+        DOM.prompt.classList.add("prompt-enter");
+        setTimeout(() => {
+          DOM.prompt.classList.remove("prompt-enter");
+        }, 200);
       }
       if (DOM.countdownBar && DOM.countdownStatus) {
         startCountdown();
@@ -620,7 +596,7 @@ System: DOM.examinerImg.querySelector(".animated-shape");
         handleError("Missing countdown elements, cannot start countdown.");
       }
       resizeIframe();
-    }, 200);
+    }, isMobile ? 0 : 200);
   }
 
   function startCountdown() {
@@ -666,7 +642,7 @@ System: DOM.examinerImg.querySelector(".animated-shape");
     cleanupRecognition();
     cleanupMedia();
     DOM.prompt.textContent = "Well done!";
-    DOM.talkBtn.textContent = "Try again?";
+    DOM.talkBtn.textContent = "🔁 Try again?";
     DOM.talkBtn.classList.remove("recording");
     DOM.talkBtn.classList.add("try-again");
     DOM.talkBtn.setAttribute("aria-label", "Restart session");
@@ -676,14 +652,11 @@ System: DOM.examinerImg.querySelector(".animated-shape");
     DOM.pauseBtn.setAttribute("aria-label", "Pause recording");
     const existingMsg = document.getElementById("disabledMsg");
     if (existingMsg) existingMsg.remove();
-    if (DOM.examinerImg) {
-      const shapeSvg = DOM.examinerImg.querySelector(".animated-shape");
-      if (shapeSvg) shapeSvg.classList.remove("animated-shape");
-    }
     renderTranscriptBlock();
   }
 
   function renderTranscriptBlock() {
+    DOM.transcript.style.display = "block";
     DOM.transcript.innerHTML = "";
     blobUrls.forEach(url => URL.revokeObjectURL(url));
     blobUrls.length = 0;
@@ -775,7 +748,7 @@ System: DOM.examinerImg.querySelector(".animated-shape");
           const link = document.createElement("a");
           link.href = url;
           link.download = config.downloadName;
-          link.textContent = "Download full response";
+          link.textContent = "⬇️ Download your full response";
           link.style.cssText = "display: block; margin: 10px 4px; font-size: 13px;";
           link.setAttribute("aria-label", "Download full response audio");
           DOM.transcript.appendChild(link);
@@ -820,9 +793,7 @@ System: DOM.examinerImg.querySelector(".animated-shape");
     const existingMsg = document.getElementById("disabledMsg");
     if (existingMsg) existingMsg.remove();
     if (DOM.examinerImg) {
-      DOM.examinerImg.outerHTML = config.fallbackImage;
-      DOM.examinerImg = document.getElementById("examinerImg");
-      DOM.examinerImg.setAttribute("aria-label", "Default fallback shape (octagon)");
+      DOM.examinerImg.innerHTML = `<img src="${config.examinerImage}" alt="Examiner placeholder" style="width: 80px; height: 80px;">`;
     }
     resizeIframe();
   }
