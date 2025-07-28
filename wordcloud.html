@@ -161,7 +161,6 @@
         "#ea894e", "#34495e", "#8e44ad", "#3498db", "#2ecc71",
         "#f0609e", "#fbad18", "#ed1b43", "#3b74ba", "#000000"
       ],
-      rotationAngles: [0, 45, 90],
       maxWords: 50,
       toastQueue: [],
       isShowingToast: false,
@@ -315,19 +314,19 @@
         this.wordCountDiv.textContent = `Total unique words: ${limitedData.length}`;
         const width = this.canvasWrapper.clientWidth;
         const height = this.canvasWrapper.clientHeight;
-
+    
         this.svg.selectAll("*").remove();
-
+    
         const layout = d3.layout.cloud()
           .size([width, height])
           .words(limitedData.map(d => ({ text: d[0], size: d[1] * 8 })))
           .padding(5)
-          .rotate(() => this.rotationAngles[Math.floor(Math.random() * this.rotationAngles.length)])
+          .rotate(0)
           .spiral("archimedean")
           .font("Lato")
           .fontSize(d => Math.max(d.size, 14))
           .on("end", (words) => this.draw(words));
-
+    
         layout.start();
         this.sendHeight();
       },
@@ -343,7 +342,7 @@
           .style("font-size", d => `${d.size}px`)
           .style("fill", () => this.colors[Math.floor(Math.random() * this.colors.length)])
           .attr("text-anchor", "middle")
-          .attr("transform", d => `translate(${d.x},${d.y}) rotate(${d.rotate})`)
+          .attr("transform", d => `translate(${d.x},${d.y})`)
           .text(d => d.text)
           .on("click", (event, d) => {
             this.showToast(`Word: ${d.text}, Size: ${d.size}`, { type: "success" });
