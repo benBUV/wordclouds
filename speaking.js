@@ -1,5 +1,3 @@
-console.log('Speech v1');
-
 const globalQuestions = [];
 
 const Speaking = (function () {
@@ -36,7 +34,7 @@ const Speaking = (function () {
     countdownTime: parseInt(query.get("max")) || 60,
     audioType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/mp4",
     downloadName: "ielts-response.webm",
-    examinerImage: "https://via.placeholder.com/80?text=Examiner", // Static image URL
+    examinerImage: "https://via.placeholder.com/80?text=Examiner",
   };
 
   let recognition, mediaRecorder, audioContext, analyser, microphone;
@@ -141,6 +139,7 @@ const Speaking = (function () {
     try {
       if (DOM.examinerImg) {
         DOM.examinerImg.innerHTML = `<img src="${config.examinerImage}" alt="Examiner placeholder" style="width: 80px; height: 80px;">`;
+        DOM.examinerImg.setAttribute("aria-label", "Examiner image");
         console.log("Static examiner image set");
       } else {
         throw new Error("Examiner image element not found");
@@ -531,6 +530,7 @@ const Speaking = (function () {
       DOM.talkBtn.parentNode.appendChild(disabledMsg);
       if (!state.mediaChunks[state.index]) state.mediaChunks[state.index] = [];
     }
+    resizeIframe();
   }
 
   function cancelSession() {
@@ -584,13 +584,10 @@ const Speaking = (function () {
       updateProgressBar();
       DOM.prompt.textContent = state.questions[state.index];
       DOM.transcript.textContent = state.transcripts[state.index] || "Speak now...";
-      const isMobile = window.matchMedia("(max-width: 600px)").matches;
-      if (!isMobile) {
-        DOM.prompt.classList.add("prompt-enter");
-        setTimeout(() => {
-          DOM.prompt.classList.remove("prompt-enter");
-        }, 200);
-      }
+      DOM.prompt.classList.add("prompt-enter");
+      setTimeout(() => {
+        DOM.prompt.classList.remove("prompt-enter");
+      }, 200);
       if (DOM.countdownBar && DOM.countdownStatus) {
         startCountdown();
       } else {
@@ -598,7 +595,7 @@ const Speaking = (function () {
         handleError("Missing countdown elements, cannot start countdown.");
       }
       resizeIframe();
-    }, isMobile ? 0 : 200);
+    }, 200);
   }
 
   function startCountdown() {
@@ -644,7 +641,7 @@ const Speaking = (function () {
     cleanupRecognition();
     cleanupMedia();
     DOM.prompt.textContent = "Well done!";
-    DOM.talkBtn.textContent = "🔁 Try again?";
+    DOM.talkBtn.textContent = "Try again?";
     DOM.talkBtn.classList.remove("recording");
     DOM.talkBtn.classList.add("try-again");
     DOM.talkBtn.setAttribute("aria-label", "Restart session");
@@ -658,7 +655,6 @@ const Speaking = (function () {
   }
 
   function renderTranscriptBlock() {
-    DOM.transcript.style.display = "block";
     DOM.transcript.innerHTML = "";
     blobUrls.forEach(url => URL.revokeObjectURL(url));
     blobUrls.length = 0;
@@ -750,7 +746,7 @@ const Speaking = (function () {
           const link = document.createElement("a");
           link.href = url;
           link.download = config.downloadName;
-          link.textContent = "⬇️ Download your full response";
+          link.textContent = "Download full response";
           link.style.cssText = "display: block; margin: 10px 4px; font-size: 13px;";
           link.setAttribute("aria-label", "Download full response audio");
           DOM.transcript.appendChild(link);
@@ -796,6 +792,7 @@ const Speaking = (function () {
     if (existingMsg) existingMsg.remove();
     if (DOM.examinerImg) {
       DOM.examinerImg.innerHTML = `<img src="${config.examinerImage}" alt="Examiner placeholder" style="width: 80px; height: 80px;">`;
+      DOM.examinerImg.setAttribute("aria-label", "Examiner image");
     }
     resizeIframe();
   }
