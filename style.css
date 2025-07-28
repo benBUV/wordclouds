@@ -1,311 +1,234 @@
 body {
-  font-family: 'Lato', Arial, sans-serif;
-  text-align: center;
-  padding: 32px;
-  background: #ffffff;
-  color: #1f2937;
-  line-height: 1.6;
-  margin: 0;
-}
-
-main {
+  font-family: 'Lato', sans-serif;
   max-width: 600px;
   margin: 0 auto;
+  padding: 16px;
+  background-color: #f3f4f6;
+  color: #1f2937;
+  line-height: 1.5;
+}
+
+#prompt {
+  font-size: 18px;
+  text-align: center;
+  margin-bottom: 16px;
+  color: #1f2937;
+  transition: opacity 0.2s;
+}
+
+.prompt-enter {
+  opacity: 0;
+  animation: fadeIn 0.2s forwards;
+}
+
+.prompt-exit {
+  opacity: 1;
+  animation: fadeOut 0.2s forwards;
+}
+
+@keyframes fadeIn {
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  to { opacity: 0; }
 }
 
 #examinerBox {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin: 24px auto;
-  max-width: 600px;
+  justify-content: center;
+  margin-bottom: 16px;
 }
 
 #examinerImg {
+  background-color: #87b4ff;
+  border-radius: 8px;
   width: 96px;
   height: 96px;
-  border-radius: 50%;
-  background: #3c82f6;
-  margin-bottom: 16px;
   display: flex;
-  justify-content: center;
   align-items: center;
-}
-
-#progressBar {
-  display: flex;
   justify-content: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin: 24px auto;
-  max-width: 600px;
+  overflow: hidden;
 }
 
-#countdownWrapper {
-  width: 100%;
-  max-width: 600px;
-  height: 8px;
-  background-color: #e5e7eb;
-  margin: 24px auto;
-  border-radius: 4px;
-  overflow: hidden;
-  box-sizing: border-box;
+#examinerImg img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
 }
 
 #countdownBar {
-  height: 100%;
-  width: 0%;
-  background-color: #4caf50;
-  transition: width 1s linear, background-color 0.5s ease;
+  width: 100%;
+  height: 6px;
+  background-color: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
 }
 
 #countdownStatus {
   font-size: 14px;
-  color: #1f2937;
-  margin: 12px auto;
-  max-width: 600px;
-}
-
-.step {
-  padding: 6px 16px;
-  border-radius: 9999px;
-  background-color: #e5e7eb;
-  font-weight: 600;
-  font-size: 14px;
-  color: #6b7280;
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-.step.active {
-  background-color: #3b82f6;
-  color: #ffffff;
-}
-
-.step.completed {
-  background-color: #93c5fd;
-  color: #1f2937;
-}
-
-#prompt {
-  font-size: 20px;
-  font-weight: 500;
-  color: #1f2937;
-  margin: 24px auto;
-  max-width: 600px;
-}
-
-#buttonGroup {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin: 16px auto;
-  max-width: 600px;
-}
-
-button {
-  padding: 10px 24px;
-  font-size: 16px;
-  font-weight: 500;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  min-width: 120px;
-  margin: 0px 5px;
-}
-
-#talkBtn {
-  background-color: #3b82f6;
-  color: #ffffff;
-}
-
-#talkBtn:hover:not(:disabled) {
-  background-color: #2563eb;
-}
-
-#pauseBtn, #cancelBtn {
-  background-color: #6b7280;
-  color: #ffffff;
-}
-
-#pauseBtn:hover:not(:disabled), #cancelBtn:hover:not(:disabled) {
-  background-color: #4b5563;
-}
-
-button:disabled {
-  background-color: #d1d5db;
-  color: #9ca3af;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-button.recording {
-  background-color: #ef4444;
-}
-
-button.recording:hover {
-  background-color: #dc2626;
-}
-
-button.try-again {
-  background-color: #6b7280;
-}
-
-button.try-again:hover {
-  background-color: #4b5563;
-}
-
-#transcriptContainer {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 40px;
-  margin: 24px auto;
-  background: #f9fafb;
-  max-width: 600px;
-}
-
-.transcript-block {
-  text-align: left;
-  margin-bottom: 40px;
-}
-
-.transcript-block h4 {
-  font-weight: 400;
-  font-size: 16px;
-  color: #1f2937;
-}
-
-.transcript-block textarea {
-  width: 100%;
-  min-height: 64px;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
-  padding: 8px;
-  font-family: 'Lato', Arial, sans-serif;
-  font-size: 16px;
-  resize: vertical;
-  background: #ffffff;
-  box-sizing: border-box;
-}
-
-.transcript-block audio {
-  width: calc(100% - 16px);
-  margin: 8px;
-  display: block;
+  text-align: center;
+  color: #4b5563;
 }
 
 #audioLevel {
   width: 96px;
   height: 6px;
+  background-color: #e5e7eb;
   border-radius: 4px;
-  background: #e5e7eb;
-  overflow: hidden;
-  margin: 12px auto;
+  margin: 8px auto;
 }
 
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  border: 0;
+#progressBar {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
 }
 
-@keyframes prompt-exit {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
+#progressBar .step {
+  flex: 1;
+  text-align: center;
+  padding: 8px;
+  background-color: #e5e7eb;
+  color: #6b7280;
+  border-radius: 4px;
+  margin: 0 4px;
+  transition: background-color 0.3s, color 0.3s;
 }
 
-@keyframes prompt-enter {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+#progressBar .step.active {
+  background-color: #3b82f6;
+  color: white;
 }
 
-.prompt-exit {
-  animation: prompt-exit 0.2s forwards;
+#progressBar .step.completed {
+  background-color: #93c5fd;
+  color: white;
 }
 
-.prompt-enter {
-  animation: prompt-enter 0.2s forwards;
+#talkBtn, #pauseBtn, #cancelBtn {
+  background-color: #3b82f6;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 0 8px;
+  font-size: 16px;
+  transition: background-color 0.2s;
 }
 
-@keyframes shape-transition {
-  0% {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
+#pauseBtn, #cancelBtn {
+  background-color: #6b7280;
 }
 
-.animated-shape {
-  animation: shape-transition 0.3s ease-in-out, shape-breathing 2s ease-in-out infinite;
+#talkBtn:hover, #pauseBtn:hover, #cancelBtn:hover {
+  background-color: #2563eb;
 }
 
-@keyframes shape-breathing {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
-  100% {
-    transform: scale(1);
-  }
+#pauseBtn:hover, #cancelBtn:hover {
+  background-color: #4b5563;
+}
+
+#talkBtn:active, #pauseBtn:active, #cancelBtn:active {
+  transform: scale(0.95);
+}
+
+button:disabled {
+  background-color: #d1d5db;
+  color: #9ca3af;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+#transcriptContainer {
+  width: 100%;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 8px;
+  box-sizing: border-box;
+  display: none;
+}
+
+.transcript-block {
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  padding: 8px;
+}
+
+.transcript-block h4 {
+  cursor: pointer;
+  margin: 0;
+  padding: 4px;
+}
+
+.transcript-block.collapsed > *:not(h4) {
+  display: none;
+}
+
+.transcript-block textarea,
+.transcript-block audio,
+.transcript-block a {
+  width: calc(100% - 16px);
+  margin: 8px;
+}
+
+#transcriptContainer p.error {
+  color: #ff4d4d;
+  font-size: 13px;
+  margin: 8px 4px;
 }
 
 @media (max-width: 600px) {
   body {
-    padding: 16px;
+    font-size: 14px;
   }
-  main {
-    max-width: 100%;
+  #prompt {
+    font-size: 16px;
+    padding: 8px;
   }
-  #examinerBox, #progressBar, #countdownWrapper, #prompt, #countdownStatus, #transcriptContainer, #buttonGroup {
-    max-width: 100%;
+  #talkBtn, #pauseBtn, #cancelBtn {
+    padding: 6px 12px;
+    font-size: 14px;
+    margin: 4px;
   }
   #examinerImg {
     width: 80px;
     height: 80px;
   }
-  .step {
-    font-size: 12px;
-    padding: 5px 12px;
-  }
-  button {
-    font-size: 14px;
-    padding: 8px 16px;
-    min-width: 100px;
-  }
-  #prompt {
-    font-size: 24px;
-  }
-  #countdownStatus {
-    font-size: 12px;
-  }
-  #transcriptContainer {
-    padding: 12px;
+  #examinerImg img {
+    width: 64px;
+    height: 64px;
   }
   #audioLevel {
     width: 80px;
     height: 5px;
+  }
+  #transcriptContainer {
+    font-size: 13px;
+    padding: 4px;
+  }
+  .transcript-block textarea,
+  .transcript-block audio,
+  .transcript-block a {
+    width: calc(100% - 8px);
+    margin: 4px;
+    font-size: 13px;
+  }
+  #countdownBar {
+    height: 5px;
+  }
+  #progressBar .step {
+    width: 40px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  #talkBtn, #pauseBtn, #cancelBtn {
+    font-size: 12px;
+    padding: 5px 10px;
   }
 }
