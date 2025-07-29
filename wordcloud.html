@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Accessible SVG Word Cloud</title>
+  <title>SVG Word Cloud</title>
   <link href="https://fonts.googleapis.com/css2?family=Lato&display=swap" rel="stylesheet" />
   <script src="https://d3js.org/d3.v7.min.js" defer></script>
   <script src="https://unpkg.com/d3-cloud/build/d3.layout.cloud.js" defer></script>
@@ -179,6 +179,7 @@
         this.canvasWrapper = document.getElementById("canvasWrapper");
         this.query = new URLSearchParams(window.location.search);
         this.scriptUrl = this.query.get("scriptUrl");
+        this.sheetName = this.query.get("sheet");
         this.setupEventListeners();
         this.setupResizeObserver();
         document.fonts.ready.then(() => {
@@ -385,7 +386,10 @@
 
         this.spinner.style.visibility = "visible";
 
-        fetch(this.scriptUrl)
+        // Construct the fetch URL with the sheet parameter if provided
+        const fetchUrl = this.sheetName ? `${this.scriptUrl}?sheet=${encodeURIComponent(this.sheetName)}` : this.scriptUrl;
+
+        fetch(fetchUrl)
           .then(res => {
             console.log("Fetch response status:", res.status, res.statusText);
             return res.json();
@@ -445,6 +449,9 @@
 
         const formData = new FormData();
         formData.append("name", text);
+        if (this.sheetName) {
+          formData.append("sheet", this.sheetName);
+        }
 
         this.showToast("Submitting your ideas to the cloud...", { persistent: true, type: "processing" });
 
