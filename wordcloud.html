@@ -12,28 +12,21 @@
       text-align: center;
       padding: 40px;
       margin: 0;
-      min-height: 400px; /* Fallback minimum height for iframe */
-    }
-
-    #canvasWrapper {
-      position: relative;
-      width: 100%;
-      max-width: 900px;
-      margin: auto;
-      overflow: hidden; /* Prevent overflow */
+      min-height: 400px;
+      max-height: 1000px; /* Match speaking app's cap */
+      overflow: hidden; /* Prevent scrollbars */
     }
 
     #svgCloud {
       margin: auto;
       display: block;
       width: 100%;
-      height: 100%; /* Use full wrapper height */
-      max-height: none; /* Remove max-height */
+      height: 100%;
     }
 
     #toastZone {
       position: relative;
-      min-height: 60px; /* Allow dynamic height for toasts */
+      min-height: 60px;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -45,16 +38,16 @@
       background: #333;
       color: #fff;
       min-width: 200px;
-      max-width: 400px; /* Prevent overly wide toasts */
+      max-width: 400px;
       padding: 12px 24px;
       border-radius: 6px;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
       font-size: 16px;
       z-index: 9999;
       text-align: center;
-      overflow-wrap: break-word; /* Wrap long words */
-      max-height: 200px; /* Limit height for very long messages */
-      overflow-y: auto; /* Scroll if content exceeds max-height */
+      overflow-wrap: break-word;
+      max-height: 200px;
+      overflow-y: auto;
       cursor: pointer;
     }
 
@@ -76,7 +69,7 @@
       width: 100%;
       max-width: 900px;
       margin: auto;
-      /* Height set dynamically in JavaScript to maintain 3:2 aspect ratio */
+      overflow: hidden; /* Prevent scrollbars */
     }
 
     .spinner {
@@ -153,341 +146,337 @@
   <button id="downloadButton" style="padding: 8px 16px; margin-top: 10px;">Download SVG</button>
   <div id="wordCount"></div>
 
-  <!-- Add shared utils.js -->
-<script type="module" src="utils.js"></script>
+  <script type="module">
+    import * as leoProfanity from 'https://cdn.skypack.dev/leo-profanity';
+    import { resizeIframe } from './utils/resizeIframe.js';
 
-<script type="module">
-  import { debounce, resizeIframe } from 'utils.js';
-  import * as leoProfanity from 'https://cdn.skypack.dev/leo-profanity';
+    function sanitizeInput(text) {
+      return text.replace(/[<>]/g, '');
+    }
 
-  function sanitizeInput(text) {
-    return text.replace(/[<>]/g, '');
-  }
+    const WordCloudApp = {
+      vietnameseBadWordsNoGlyph: [
+        "dm", "vkl", "clgt", "vai", "cai det", "me may", "con me no", "cmm",
+        "cc", "dit", "cho chet", "du ma", "thang cho", "deo", "lon", "buoi"
+      ],
+      colors: [
+        "#ea894e", "#34495e", "#8e44ad", "#3498db", "#2ecc71",
+        "#f0609e", "#fbad18", "#ed1b43", "#3b74ba", "#000000"
+      ],
+      maxWords: 50,
+      maxWordsPerIdea: 3,
+      toastQueue: [],
+      isShowingToast: false,
+      activeToast: null,
+      toastTimeout: null,
+      currentData: [],
+      lastRenderedData: [],
 
-  const WordCloudApp = {
-    vietnameseBadWordsNoGlyph: [
-      "dm", "vkl", "clgt", "vai", "cai det", "me may", "con me no", "cmm",
-      "cc", "dit", "cho chet", "du ma", "thang cho", "deo", "lon", "buoi"
-    ],
-    colors: [
-      "#ea894e", "#34495e", "#8e44ad", "#3498db", "#2ecc71",
-      "#f0609e", "#fbad18", "#ed1b43", "#3b74ba", "#000000"
-    ],
-    maxWords: 50,
-    maxWordsPerIdea: 3,
-    toastQueue: [],
-    isShowingToast: false,
-    activeToast: null,
-    toastTimeout: null,
-    currentData: [], // Store current word cloud data
-    lastRenderedData: [], // Track last rendered data to avoid redundant renders
-
-    init() {
-      this.svg = d3.select("#svgCloud");
-      this.spinner = document.getElementById("loadingSpinner");
-      this.input = document.getElementById("wordInput");
-      this.form = document.getElementById("wordForm");
-      this.inputError = document.getElementById("inputError");
-      this.submitButton = document.getElementById("submitButton");
-      this.wordCountDiv = document.getElementById("wordCount");
-      this.canvasWrapper = document.getElementById("canvasWrapper");
-      this.query = new URLSearchParams(window.location.search);
-      this.scriptUrl = this.query.get("scriptUrl");
-      this.sheetName = this.query.get("sheet");
-      this.setupEventListeners();
-      document.fonts.ready.then(() => {
-        this.updateCanvasSize();
-        this.loadWords();
-        resizeIframe(); // Initial resize
-      });
-    },
-
-    setupEventListeners() {
-      this.form.addEventListener("submit", (e) => this.handleFormSubmission(e));
-      document.getElementById("clearButton").addEventListener("click", () => this.clearInput());
-      document.getElementById("downloadButton").addEventListener("click", () => this.downloadWordCloud());
-      this.input.addEventListener("input", () => this.validateInput());
-      // Debounced resize handler
-      const debouncedResize = debounce(() => {
-        this.updateCanvasSize();
-        resizeIframe();
-      }, 150);
-      window.addEventListener("resize", debouncedResize);
-    },
-
-    updateCanvasSize() {
-      const wrapperWidth = this.canvasWrapper.clientWidth;
-      const aspectRatio = 600 / 900; // 3:2 aspect ratio
-      const calculatedHeight = Math.min(wrapperWidth * aspectRatio, 600);
-      if (Math.abs(this.canvasWrapper.clientHeight - calculatedHeight) > 1) {
-        this.canvasWrapper.style.height = `${calculatedHeight}px`;
-        this.svg
-          .attr("width", wrapperWidth)
-          .attr("height", calculatedHeight)
-          .attr("viewBox", `0 0 ${wrapperWidth} ${calculatedHeight}`);
-        if (this.currentData.length) {
-          this.renderWordCloud(this.currentData); // Re-render only if data exists
-        }
-      }
-    },
-
-    containsVietnameseProfanity(input) {
-      const normalized = input.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      return this.vietnameseBadWordsNoGlyph.some(word => normalized.includes(word));
-    },
-
-    validateInput() {
-      const text = this.input.value.trim();
-      const glyphRegex = /[^a-zA-Z0-9 ,.'"!?-]/g;
-      if (glyphRegex.test(text)) {
-        this.inputError.textContent = "Please use English letters only.";
-        this.input.classList.add("invalid");
-      } else if (leoProfanity.check(text) || this.containsVietnameseProfanity(text)) {
-        this.inputError.textContent = "Profanity detected.";
-        this.input.classList.add("invalid");
-      } else {
-        const ideas = text.split(',').map(idea => idea.trim()).filter(idea => idea.length > 0);
-        const hasInvalidIdea = ideas.some(idea => {
-          const wordCount = idea.split(/\s+/).filter(word => word.length > 0).length;
-          return wordCount > this.maxWordsPerIdea;
+      init() {
+        this.svg = d3.select("#svgCloud");
+        this.spinner = document.getElementById("loadingSpinner");
+        this.input = document.getElementById("wordInput");
+        this.form = document.getElementById("wordForm");
+        this.inputError = document.getElementById("inputError");
+        this.submitButton = document.getElementById("submitButton");
+        this.wordCountDiv = document.getElementById("wordCount");
+        this.canvasWrapper = document.getElementById("canvasWrapper");
+        this.query = new URLSearchParams(window.location.search);
+        this.scriptUrl = this.query.get("scriptUrl");
+        this.sheetName = this.query.get("sheet");
+        this.setupEventListeners();
+        document.fonts.ready.then(() => {
+          this.updateCanvasSize();
+          this.loadWords();
         });
-        if (hasInvalidIdea) {
-          this.inputError.textContent = `Each idea must have ${this.maxWordsPerIdea} words or fewer.`;
+      },
+
+      setupEventListeners() {
+        this.form.addEventListener("submit", (e) => this.handleFormSubmission(e));
+        document.getElementById("clearButton").addEventListener("click", () => this.clearInput());
+        document.getElementById("downloadButton").addEventListener("click", () => this.downloadWordCloud());
+        this.input.addEventListener("input", () => this.validateInput());
+        window.addEventListener("resize", () => {
+          this.updateCanvasSize();
+          resizeIframe();
+        });
+        window.addEventListener("load", resizeIframe);
+      },
+
+      updateCanvasSize() {
+        const wrapperWidth = this.canvasWrapper.clientWidth;
+        const aspectRatio = 600 / 900;
+        const calculatedHeight = Math.min(wrapperWidth * aspectRatio, 600);
+        if (Math.abs(this.canvasWrapper.clientHeight - calculatedHeight) > 1) {
+          this.canvasWrapper.style.height = `${calculatedHeight}px`;
+          this.svg
+            .attr("width", wrapperWidth)
+            .attr("height", calculatedHeight)
+            .attr("viewBox", `0 0 ${wrapperWidth} ${calculatedHeight}`);
+          if (this.currentData.length) {
+            this.renderWordCloud(this.currentData);
+          }
+        }
+        resizeIframe();
+      },
+
+      containsVietnameseProfanity(input) {
+        const normalized = input.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        return this.vietnameseBadWordsNoGlyph.some(word => normalized.includes(word));
+      },
+
+      validateInput() {
+        const text = this.input.value.trim();
+        const glyphRegex = /[^a-zA-Z0-9 ,.'"!?-]/g;
+        if (glyphRegex.test(text)) {
+          this.inputError.textContent = "Please use English letters only.";
+          this.input.classList.add("invalid");
+        } else if (leoProfanity.check(text) || this.containsVietnameseProfanity(text)) {
+          this.inputError.textContent = "Profanity detected.";
           this.input.classList.add("invalid");
         } else {
-          this.inputError.textContent = "";
-          this.input.classList.remove("invalid");
+          const ideas = text.split(',').map(idea => idea.trim()).filter(idea => idea.length > 0);
+          const hasInvalidIdea = ideas.some(idea => {
+            const wordCount = idea.split(/\s+/).filter(word => word.length > 0).length;
+            return wordCount > this.maxWordsPerIdea;
+          });
+          if (hasInvalidIdea) {
+            this.inputError.textContent = `Each idea must have ${this.maxWordsPerIdea} words or fewer.`;
+            this.input.classList.add("invalid");
+          } else {
+            this.inputError.textContent = "";
+            this.input.classList.remove("invalid");
+          }
         }
-      }
-    },
+        resizeIframe();
+      },
 
-    clearInput() {
-      this.input.value = "";
-      this.inputError.textContent = "";
-      this.input.classList.remove("invalid");
-      this.input.focus();
-      resizeIframe();
-    },
-
-    showToast(message, options = {}) {
-      this.toastQueue.push({ message, options });
-      this.processToastQueue();
-    },
-
-    processToastQueue() {
-      if (this.isShowingToast || this.toastQueue.length === 0) return;
-      this.isShowingToast = true;
-      const { message, options } = this.toastQueue.shift();
-      const { persistent = false, resetTimer = true, type = "success" } = options;
-      const isMobile = window.innerWidth <= 600;
-      const duration = isMobile ? 4000 : 2500;
-
-      if (!this.activeToast) {
-        this.activeToast = document.createElement("div");
-        this.activeToast.className = `toast ${type}`;
-        document.getElementById("toastZone").appendChild(this.activeToast);
-      }
-      this.activeToast.textContent = message;
-      this.activeToast.style.animation = "none";
-      void this.activeToast.offsetWidth; // Trigger reflow
-      this.activeToast.className = `toast ${type}`;
-
-      this.activeToast.onclick = () => {
-        this.activeToast.remove();
-        this.activeToast = null;
-        this.isShowingToast = false;
-        this.processToastQueue();
+      clearInput() {
+        this.input.value = "";
+        this.inputError.textContent = "";
+        this.input.classList.remove("invalid");
         this.input.focus();
         resizeIframe();
-      };
+      },
 
-      if (!persistent && resetTimer) {
-        this.activeToast.style.animation = `bounceFade ${duration}ms ease forwards`;
-        this.toastTimeout = setTimeout(() => {
+      showToast(message, options = {}) {
+        this.toastQueue.push({ message, options });
+        this.processToastQueue();
+      },
+
+      processToastQueue() {
+        if (this.isShowingToast || this.toastQueue.length === 0) return;
+        this.isShowingToast = true;
+        const { message, options } = this.toastQueue.shift();
+        const { persistent = false, resetTimer = true, type = "success" } = options;
+        const isMobile = window.innerWidth <= 600;
+        const duration = isMobile ? 4000 : 2500;
+
+        if (!this.activeToast) {
+          this.activeToast = document.createElement("div");
+          this.activeToast.className = `toast ${type}`;
+          document.getElementById("toastZone").appendChild(this.activeToast);
+        }
+        this.activeToast.textContent = message;
+        this.activeToast.style.animation = "none";
+        void this.activeToast.offsetWidth;
+        this.activeToast.className = `toast ${type}`;
+
+        this.activeToast.onclick = () => {
           this.activeToast.remove();
           this.activeToast = null;
           this.isShowingToast = false;
           this.processToastQueue();
           this.input.focus();
           resizeIframe();
-        }, duration);
-      } else {
-        this.isShowingToast = false;
-        this.processToastQueue();
-        resizeIframe();
-      }
-    },
+        };
 
-    renderWordCloud(data) {
-      this.currentData = data; // Store data
-      const limitedData = data.slice(0, this.maxWords);
-      this.svg.attr("aria-label", `Word cloud displaying ${limitedData.length} words`);
-      this.wordCountDiv.textContent = `Total unique words: ${limitedData.length}`;
-      const width = this.canvasWrapper.clientWidth;
-      const height = this.canvasWrapper.clientHeight;
-
-      // Only re-render if data has changed
-      if (JSON.stringify(this.currentData) !== JSON.stringify(this.lastRenderedData)) {
-        this.svg.selectAll("*").remove();
-        this.lastRenderedData = [...this.currentData];
-
-        const layout = d3.layout.cloud()
-          .size([width, height])
-          .words(limitedData.map(d => ({ text: d[0], size: d[1] * 8 })))
-          .padding(5)
-          .rotate(0)
-          .spiral("archimedean")
-          .font("Lato")
-          .fontSize(d => Math.max(d.size, 14))
-          .on("end", (words) => this.draw(words));
-
-        layout.start();
-      }
-      resizeIframe();
-    },
-
-    draw(words) {
-      this.svg.append("g")
-        .attr("transform", `translate(${this.canvasWrapper.clientWidth / 2},${this.canvasWrapper.clientHeight / 2})`)
-        .selectAll("text")
-        .data(words)
-        .enter().append("text")
-        .attr("tabindex", 0)
-        .style("font-family", "Lato")
-        .style("font-size", d => `${d.size}px`)
-        .style("fill", () => this.colors[Math.floor(Math.random() * this.colors.length)])
-        .attr("text-anchor", "middle")
-        .attr("transform", d => `translate(${d.x},${d.y})`)
-        .text(d => d.text)
-        .on("click", (event, d) => {
-          this.showToast(`Word: ${d.text}, Size: ${d.size}`, { type: "success" });
-        })
-        .on("keydown", (event, d) => {
-          if (event.key === "Enter") {
-            this.showToast(`Word: ${d.text}, Size: ${d.size}`, { type: "success" });
-          }
-        });
-    },
-
-    downloadWordCloud() {
-      const svgData = new XMLSerializer().serializeToString(this.svg.node());
-      const blob = new Blob([svgData], { type: "image/svg+xml" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "wordcloud.svg";
-      a.click();
-      URL.revokeObjectURL(url);
-      this.showToast("Word cloud downloaded!", { type: "success" });
-    },
-
-    loadWords() {
-      if (!this.scriptUrl) {
-        this.showToast("Missing scriptUrl query parameter", { type: "error" });
-        return;
-      }
-
-      this.spinner.style.visibility = "visible";
-      const fetchUrl = this.sheetName ? `${this.scriptUrl}?sheet=${encodeURIComponent(this.sheetName)}` : this.scriptUrl;
-
-      fetch(fetchUrl)
-        .then(res => {
-          console.log("Fetch response status:", res.status, res.statusText);
-          return res.json();
-        })
-        .then(json => {
-          console.log("Fetch response data:", json);
-          if (json.result === "success" && Array.isArray(json.list)) {
-            this.renderWordCloud(json.list);
-            this.spinner.style.visibility = "hidden";
-          } else {
-            this.showToast(`Error: ${json.error || "Invalid data received"}`, { type: "error" });
-            this.spinner.style.visibility = "hidden";
-          }
-        })
-        .catch(err => {
-          console.error("Fetch error:", err);
-          this.showToast("Failed to load word cloud. Please try again later.", { type: "error" });
-          this.spinner.style.visibility = "hidden";
-        });
-    },
-
-    handleFormSubmission(e) {
-      e.preventDefault();
-      this.submitButton.disabled = true;
-      const text = sanitizeInput(this.input.value.trim());
-
-      if (!text) {
-        this.showToast("⚠️ Please enter some ideas", { type: "warn" });
-        this.submitButton.disabled = false;
-        return;
-      }
-
-      const glyphRegex = /[^a-zA-Z0-9 ,.'"!?-]/g;
-      if (glyphRegex.test(text)) {
-        this.showToast("⚠️ English letters only", { type: "warn" });
-        this.submitButton.disabled = false;
-        return;
-      }
-
-      if (leoProfanity.check(text) || this.containsVietnameseProfanity(text)) {
-        this.showToast("🚫 Oops, bad word detected in your submission. Please remove any inappropriate language and try again.", { type: "error" });
-        this.submitButton.disabled = false;
-        return;
-      }
-
-      const ideas = text.split(',').map(idea => idea.trim()).filter(idea => idea.length > 0);
-      const hasInvalidIdea = ideas.some(idea => {
-        const wordCount = idea.split(/\s+/).filter(word => word.length > 0).length;
-        return wordCount > this.maxWordsPerIdea;
-      });
-
-      if (hasInvalidIdea) {
-        this.showToast(`⚠️ Each idea must have ${this.maxWordsPerIdea} words or fewer`, { type: "warn" });
-        this.submitButton.disabled = false;
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("name", text);
-      if (this.sheetName) {
-        formData.append("sheet", this.sheetName);
-      }
-
-      this.showToast("Submitting your ideas to the cloud...", { persistent: true, type: "processing" });
-
-      fetch(this.scriptUrl, {
-        method: "POST",
-        body: formData
-      })
-        .then(res => {
-          console.log("Submit response status:", res.status, res.statusText);
-          return res.json();
-        })
-        .then(json => {
-          console.log("Submit response data:", json);
-          if (json.result === "success") {
-            this.clearInput();
-            this.showToast(`Successfully added ${json.added} new words and updated ${json.updated} existing words to the cloud`, { type: "success" });
-            this.loadWords();
-          } else {
-            this.showToast(`Error: ${json.error}`, { type: "error" });
-            this.spinner.style.visibility = "hidden";
-          }
-        })
-        .catch(err => {
-          console.error("Submit error:", err);
-          this.showToast("Failed to submit ideas to the cloud. Please try again later.", { type: "error" });
-          this.spinner.style.visibility = "hidden";
-        })
-        .finally(() => {
-          this.submitButton.disabled = false;
+        if (!persistent && resetTimer) {
+          this.activeToast.style.animation = `bounceFade ${duration}ms ease forwards`;
+          this.toastTimeout = setTimeout(() => {
+            this.activeToast.remove();
+            this.activeToast = null;
+            this.isShowingToast = false;
+            this.processToastQueue();
+            this.input.focus();
+            resizeIframe();
+          }, duration);
+        } else {
+          this.isShowingToast = false;
+          this.processToastQueue();
           resizeIframe();
-        });
-    }
-  };
+        }
+      },
 
-  WordCloudApp.init();
-</script>
+      renderWordCloud(data) {
+        this.currentData = data;
+        const limitedData = data.slice(0, this.maxWords);
+        this.svg.attr("aria-label", `Word cloud displaying ${limitedData.length} words`);
+        this.wordCountDiv.textContent = `Total unique words: ${limitedData.length}`;
+        const width = this.canvasWrapper.clientWidth;
+        const height = this.canvasWrapper.clientHeight;
+
+        if (JSON.stringify(this.currentData) !== JSON.stringify(this.lastRenderedData)) {
+          this.svg.selectAll("*").remove();
+          this.lastRenderedData = [...this.currentData];
+
+          const layout = d3.layout.cloud()
+            .size([width, height])
+            .words(limitedData.map(d => ({ text: d[0], size: d[1] * 8 })))
+            .padding(5)
+            .rotate(0)
+            .spiral("archimedean")
+            .font("Lato")
+            .fontSize(d => Math.max(d.size, 14))
+            .on("end", (words) => this.draw(words));
+
+          layout.start();
+        }
+        resizeIframe();
+      },
+
+      draw(words) {
+        this.svg.append("g")
+          .attr("transform", `translate(${this.canvasWrapper.clientWidth / 2},${this.canvasWrapper.clientHeight / 2})`)
+          .selectAll("text")
+          .data(words)
+          .enter().append("text")
+          .attr("tabindex", 0)
+          .style("font-family", "Lato")
+          .style("font-size", d => `${d.size}px`)
+          .style("fill", () => this.colors[Math.floor(Math.random() * this.colors.length)])
+          .attr("text-anchor", "middle")
+          .attr("transform", d => `translate(${d.x},${d.y})`)
+          .text(d => d.text)
+          .on("click", (event, d) => {
+            this.showToast(`Word: ${d.text}, Size: ${d.size}`, { type: "success" });
+          })
+          .on("keydown", (event, d) => {
+            if (event.key === "Enter") {
+              this.showToast(`Word: ${d.text}, Size: ${d.size}`, { type: "success" });
+            }
+          });
+      },
+
+      downloadWordCloud() {
+        const svgData = new XMLSerializer().serializeToString(this.svg.node());
+        const blob = new Blob([svgData], { type: "image/svg+xml" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "wordcloud.svg";
+        a.click();
+        URL.revokeObjectURL(url);
+        this.showToast("Word cloud downloaded!", { type: "success" });
+      },
+
+      loadWords() {
+        if (!this.scriptUrl) {
+          this.showToast("Missing scriptUrl query parameter", { type: "error" });
+          return;
+        }
+
+        this.spinner.style.visibility = "visible";
+        const fetchUrl = this.sheetName ? `${this.scriptUrl}?sheet=${encodeURIComponent(this.sheetName)}` : this.scriptUrl;
+
+        fetch(fetchUrl)
+          .then(res => {
+            console.log("Fetch response status:", res.status, res.statusText);
+            return res.json();
+          })
+          .then(json => {
+            console.log("Fetch response data:", json);
+            if (json.result === "success" && Array.isArray(json.list)) {
+              this.renderWordCloud(json.list);
+              this.spinner.style.visibility = "hidden";
+            } else {
+              this.showToast(`Error: ${json.error || "Invalid data received"}`, { type: "error" });
+              this.spinner.style.visibility = "hidden";
+            }
+          })
+          .catch(err => {
+            console.error("Fetch error:", err);
+            this.showToast("Failed to load word cloud. Please try again later.", { type: "error" });
+            this.spinner.style.visibility = "hidden";
+          });
+      },
+
+      handleFormSubmission(e) {
+        e.preventDefault();
+        this.submitButton.disabled = true;
+        const text = sanitizeInput(this.input.value.trim());
+
+        if (!text) {
+          this.showToast("⚠️ Please enter some ideas", { type: "warn" });
+          this.submitButton.disabled = false;
+          return;
+        }
+
+        const glyphRegex = /[^a-zA-Z0-9 ,.'"!?-]/g;
+        if (glyphRegex.test(text)) {
+          this.showToast("⚠️ English letters only", { type: "warn" });
+          this.submitButton.disabled = false;
+          return;
+        }
+
+        if (leoProfanity.check(text) || this.containsVietnameseProfanity(text)) {
+          this.showToast("🚫 Oops, bad word detected in your submission. Please remove any inappropriate language and try again.", { type: "error" });
+          this.submitButton.disabled = false;
+          return;
+        }
+
+        const ideas = text.split(',').map(idea => idea.trim()).filter(idea => idea.length > 0);
+        const hasInvalidIdea = ideas.some(idea => {
+          const wordCount = idea.split(/\s+/).filter(word => word.length > 0).length;
+          return wordCount > this.maxWordsPerIdea;
+        });
+
+        if (hasInvalidIdea) {
+          this.showToast(`⚠️ Each idea must have ${this.maxWordsPerIdea} words or fewer`, { type: "warn" });
+          this.submitButton.disabled = false;
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("name", text);
+        if (this.sheetName) {
+          formData.append("sheet", this.sheetName);
+        }
+
+        this.showToast("Submitting your ideas to the cloud...", { persistent: true, type: "processing" });
+
+        fetch(this.scriptUrl, {
+          method: "POST",
+          body: formData
+        })
+          .then(res => {
+            console.log("Submit response status:", res.status, res.statusText);
+            return res.json();
+          })
+          .then(json => {
+            console.log("Submit response data:", json);
+            if (json.result === "success") {
+              this.clearInput();
+              this.showToast(`Successfully added ${json.added} new words and updated ${json.updated} existing words to the cloud`, { type: "success" });
+              this.loadWords();
+            } else {
+              this.showToast(`Error: ${json.error}`, { type: "error" });
+              this.spinner.style.visibility = "hidden";
+            }
+          })
+          .catch(err => {
+            console.error("Submit error:", err);
+            this.showToast("Failed to submit ideas to the cloud. Please try again later.", { type: "error" });
+            this.spinner.style.visibility = "hidden";
+          })
+          .finally(() => {
+            this.submitButton.disabled = false;
+            resizeIframe();
+          });
+      }
+    };
+
+    WordCloudApp.init();
+  </script>
 </body>
 </html>
