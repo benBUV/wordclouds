@@ -6,20 +6,23 @@ export function debounce(func, wait) {
   };
 }
 
-export function resizeIframe() {
-  const height = Math.max(
-    document.documentElement.scrollHeight,
-    document.body.scrollHeight,
-    document.body.offsetHeight,
-    document.documentElement.offsetHeight
-  ) + 20;
-  const cappedHeight = Math.min(height, 1000);
-  if (height > 1000) {
-    console.warn(`Excessive scrollHeight: ${height}px, using cappedHeight: ${cappedHeight}px`);
-  }
-  console.log(`Sending lti.frameResize with height: ${cappedHeight}px`);
-  window.parent.postMessage(
-    JSON.stringify({ subject: "lti.frameResize", height: `${cappedHeight}px` }),
-    "*"
-  );
-}
+export const resizeIframe = debounce(function () {
+  requestAnimationFrame(() => {
+    const height = Math.max(
+      document.documentElement.scrollHeight,
+      document.body.scrollHeight,
+      document.body.offsetHeight,
+      document.documentElement.offsetHeight,
+      document.body.clientHeight,
+      document.documentElement.clientHeight
+    ) + 10; // Reduced padding to 10px
+    console.log(`Sending resize message with height: ${height}px`);
+    window.parent.postMessage(
+      JSON.stringify({
+        subject: "lti.frameResize",
+        height: `${height}px`
+      }),
+      "*"
+    );
+  });
+}, 150);
