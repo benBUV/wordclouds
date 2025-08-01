@@ -15,12 +15,20 @@
       min-height: 400px; /* Fallback minimum height for iframe */
     }
 
+    #canvasWrapper {
+      position: relative;
+      width: 100%;
+      max-width: 900px;
+      margin: auto;
+      overflow: hidden; /* Prevent overflow */
+    }
+
     #svgCloud {
       margin: auto;
       display: block;
       width: 100%;
-      height: auto;
-      max-height: 600px;
+      height: 100%; /* Use full wrapper height */
+      max-height: none; /* Remove max-height */
     }
 
     #toastZone {
@@ -146,10 +154,10 @@
   <div id="wordCount"></div>
 
   <!-- Add shared utils.js -->
-<script type="module" src="/js/utils.js"></script>
+<script type="module" src="utils.js"></script>
 
 <script type="module">
-  import { debounce, resizeIframe } from '/js/utils.js';
+  import { debounce, resizeIframe } from 'utils.js';
   import * as leoProfanity from 'https://cdn.skypack.dev/leo-profanity';
 
   function sanitizeInput(text) {
