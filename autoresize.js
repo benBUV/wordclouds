@@ -9,12 +9,24 @@ function receiveMessage(evt) {
     return;
   }
 
-  if (data.Sender !== "buvautoresize" || typeof data.Height !== 'number') return;
+  if (data.Sender !== "buvautoresize" || typeof data.Height !== 'number') {
+    return;
+  }
+
+  // Validate height
+  if (data.Height < 0 || data.Height > 10000) {
+    console.warn('Invalid height received:', data.Height);
+    return;
+  }
 
   const iframes = document.getElementsByTagName('iframe');
   for (const iframe of iframes) {
     if (iframe.contentWindow === evt.source) {
-      iframe.style.height = `${data.Height}px`;
+      const currentHeight = parseFloat(iframe.style.height) || 0;
+      if (Math.abs(currentHeight - data.Height) > 1) {
+        console.log('Updating iframe height to:', data.Height, 'for:', iframe.src);
+        iframe.style.height = `${data.Height}px`;
+      }
       break;
     }
   }
