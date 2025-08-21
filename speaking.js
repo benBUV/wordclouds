@@ -140,7 +140,7 @@ const Speaking = (function () {
     DOM.pauseBtn.setAttribute("aria-label", "Pause recording");
     try {
       if (DOM.examinerImg) {
-        DOM.examinerImg.innerHTML = `<img src="${config.examinerImage}" alt="Examiner placeholder" style="width: 80px; height: 80px;">`;
+        DOM.examinerImg.innerHTML = `<img src="${config.examinerImage}" alt="Examiner placeholder" style="width: 180px; height: 180px;">`;
         DOM.examinerImg.setAttribute("aria-label", "Examiner image");
         console.log("Static examiner image set");
       } else {
