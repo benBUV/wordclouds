@@ -34,7 +34,7 @@ const Speaking = (function () {
     countdownTime: parseInt(query.get("max")) || 60,
     audioType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/mp4",
     downloadName: "ielts-response.webm",
-    examinerImage: "https://via.placeholder.com/80?text=Examiner",
+    examinerImage: "./images/examiner.png",
   };
 
   let recognition, mediaRecorder, audioContext, analyser, microphone;
