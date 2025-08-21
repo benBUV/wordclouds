@@ -10,6 +10,7 @@ const Speaking = (function () {
     transcripts: [],
     timeLeft: 0,
     isProcessing: false,
+    speechTimeout: null, // Added for speech detection timeout
   };
 
   const DOM = {
@@ -35,6 +36,7 @@ const Speaking = (function () {
     audioType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/mp4",
     downloadName: "ielts-response.webm",
     examinerImage: "./images/examiner.png",
+    speechDetectionTimeout: 10000, // 10 seconds for speech detection
   };
 
   let recognition, mediaRecorder, audioContext, analyser, microphone;
@@ -232,6 +234,7 @@ const Speaking = (function () {
     recognition.continuous = true;
 
     recognition.onresult = (event) => {
+      clearTimeout(state.speechTimeout); // Clear timeout on speech detection
       let interim = "";
       let final = "";
       for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -251,12 +254,57 @@ const Speaking = (function () {
       console.log("Speech recognition ended for question", state.index + 1);
     };
 
+    recognition.onstart = () => {
+      // Start 10-second countdown for speech detection
+      DOM.prompt.textContent = `Speak now (10 seconds remaining)...`;
+      let timeLeft = 10;
+      state.speechTimeout = setInterval(() => {
+        timeLeft--;
+        DOM.prompt.textContent = `Speak now (${timeLeft} seconds remaining)...`;
+        if (timeLeft <= 0) {
+          clearTimeout(state.speechTimeout);
+          resetToStart();
+        }
+      }, 1000);
+    };
+
     recognition.onerror = (event) => {
       console.error("SpeechRecognition error:", event.error);
+      clearTimeout(state.speechTimeout);
       if (event.error === "no-speech" || event.error === "not-allowed") {
-        handleError("Microphone access denied or no speech detected. Please check permissions.");
+        resetToStart();
       }
     };
+  }
+
+  function resetToStart() {
+    console.log("No speech detected within 10 seconds, resetting to start state");
+    clearInterval(state.countdownInterval);
+    cleanupRecognition();
+    cleanupMedia();
+    state.isRecording = false;
+    state.timeLeft = 0;
+    state.isProcessing = false;
+    DOM.prompt.textContent = "Click to begin";
+    DOM.talkBtn.textContent = "Start";
+    DOM.talkBtn.classList.remove("recording");
+    DOM.talkBtn.setAttribute("aria-label", "Start recording");
+    DOM.pauseBtn.disabled = true;
+    DOM.pauseBtn.textContent = "Pause";
+    DOM.pauseBtn.setAttribute("aria-label", "Pause recording");
+    DOM.transcript.style.display = "none";
+    const existingMsg = document.getElementById("disabledMsg");
+    if (existingMsg) existingMsg.remove();
+    updateProgressBar();
+    setupSpeechRecognition();
+    setupMediaRecorder().then(() => {
+      setupAudioLevelIndicator();
+      setupEventListeners();
+      DOM.talkBtn.disabled = false;
+    }).catch(err => {
+      handleError(`Failed to restart media after reset: ${err.message}`);
+    });
+    resizeIframe();
   }
 
   async function setupMediaRecorder() {
@@ -354,6 +402,7 @@ const Speaking = (function () {
         state.isRecording = false;
         state.timeLeft = 0;
         state.countdownInterval = null;
+        state.speechTimeout = null;
         state.questions = globalQuestions.slice(0, config.questionCount);
         console.log("Retrying session with cached questions:", state.questions);
         DOM.talkBtn.textContent = "Start";
@@ -516,6 +565,7 @@ const Speaking = (function () {
         console.warn(`SpeechRecognition pause failed: ${err.message}`);
       }
       clearInterval(state.countdownInterval);
+      clearTimeout(state.speechTimeout);
       DOM.pauseBtn.textContent = "Resume";
       DOM.prompt.textContent = "Paused";
       DOM.pauseBtn.setAttribute("aria-label", "Resume recording");
@@ -539,12 +589,14 @@ const Speaking = (function () {
         cleanupRecognition();
         cleanupMedia();
         clearInterval(state.countdownInterval);
+        clearTimeout(state.speechTimeout);
         state.mediaChunks = Array(state.questions.length).fill().map(() => []);
         state.transcripts = [];
         state.index = 0;
         state.isRecording = false;
         state.timeLeft = 0;
         state.countdownInterval = null;
+        state.speechTimeout = null;
         state.questions = globalQuestions.slice(0, config.questionCount);
         console.log("Session cancelled, questions reset from globalQuestions:", state.questions);
         DOM.prompt.textContent = "Click to begin";
@@ -638,6 +690,7 @@ const Speaking = (function () {
 
   function endSession() {
     clearInterval(state.countdownInterval);
+    clearTimeout(state.speechTimeout);
     cleanupRecognition();
     cleanupMedia();
     DOM.prompt.textContent = "Well done!";
