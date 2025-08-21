@@ -155,7 +155,7 @@ const Speaking = (function () {
       handleError("No valid questions loaded.");
       return;
     }
-    DOM.prompt.textContent = "Click to begin";
+    DOM.prompt.textContent = "Press start to begin";
     setupSpeechRecognition();
     try {
       await setupMediaRecorder();
@@ -852,5 +852,6 @@ const Speaking = (function () {
 
   return { initApp };
 })();
+
 
 Speaking.initApp();
